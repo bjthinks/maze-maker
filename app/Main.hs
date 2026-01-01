@@ -3,16 +3,19 @@ module Main where
 import Data.Time.Clock.System
 import Control.Monad.Random
 import Control.Monad.ST.Trans
-import Control.Monad.Union
+import qualified Control.Monad.Union as UF
 import Control.Monad.Writer
 
-type Maze s = STT s (RandT StdGen (WriterT String (UnionM (Int,Int))))
+type Maze s = STT s (RandT StdGen (WriterT String (UF.UnionM (Int,Int))))
 
 nl :: Maze s ()
 nl = tell "\n"
 
 line :: String -> Maze s ()
 line s = tell s >> nl
+
+m :: l -> l -> (l,())
+m x _ = (x,())
 
 test :: Maze s ()
 test = do
@@ -25,6 +28,11 @@ test = do
   writeSTArray a 9 42
   f <- freezeSTArray a
   line $ "Array: " ++ show f
+  nodes <- sequence $ map UF.new [(2,1),(2,3),(1,2),(3,2)]
+  _ <- UF.merge m (nodes !! 0) (nodes !! 1)
+  _ <- UF.merge m (nodes !! 2) (nodes !! 3)
+  labels <- sequence $ map UF.lookup nodes
+  line $ "Nodes: " ++ show (map snd labels)
   return ()
 
 getNanosSinceEpoch :: IO Integer
@@ -36,5 +44,5 @@ getNanosSinceEpoch = do
 main :: IO ()
 main = do
   t <- getNanosSinceEpoch
-  putStr $ snd $ run $ runWriterT $ runRandT (runSTT test) $
+  putStr $ snd $ UF.run $ runWriterT $ runRandT (runSTT test) $
     mkStdGen $ fromInteger t
