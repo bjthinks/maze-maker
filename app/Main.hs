@@ -104,6 +104,16 @@ clearSpace maze (x,y) = writeSTArray maze (x,y) True
 m :: l -> l -> (l,())
 m x _ = (x,())
 
+removeWalls :: STArray s (Int,Int) Bool -> S.Set (Int,Int) -> Int -> Maze s ()
+removeWalls _ _ 0 = return ()
+removeWalls maze walls numToRemove = do
+  let numWalls = S.size walls
+  index <- lift $ getRandomR (0,numWalls-1)
+  let wall = S.elemAt index walls
+      newWalls = S.deleteAt index walls
+  clearSpace maze wall
+  removeWalls maze newWalls $ numToRemove - 1
+
 test :: (Int,Int) -> Maze s ()
 test (width,height) = do
   nodes <- sequence $ map UF.new [(2,1),(2,3),(1,2),(3,2)]
@@ -117,15 +127,9 @@ test (width,height) = do
   sequence_ $ map (clearSpace maze) startingSpaces
   let wallLocs = [(x,y) | x <- [1,3..width-2], y <- [2,4..height-3]] ++
                  [(x,y) | x <- [2,4..width-3], y <- [1,3..height-2]]
-  let walls = S.fromList wallLocs
-      numWalls = S.size walls
-  index <- lift $ getRandomR (0,numWalls-1)
-  let wall = S.elemAt index walls
-      walls' = S.deleteAt index walls
-      wallsLeft = S.size walls'
-  clearSpace maze wall
+      walls = S.fromList wallLocs
+  removeWalls maze walls $ (width `div` 2) * (height `div` 2) - 1
   prettyPrint maze
-  line $ show numWalls ++ " " ++ show wallsLeft
 
 getNanosSinceEpoch :: IO Integer
 getNanosSinceEpoch = do
