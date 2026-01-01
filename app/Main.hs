@@ -7,6 +7,7 @@ import qualified Control.Monad.Union as UF
 import Control.Monad.Writer
 
 import Data.Time.Clock.System (getSystemTime, SystemTime(..))
+import System.Console.ANSI (hyperlink)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -139,6 +140,10 @@ main = do
     [] -> do
       putStrLn "You may specify the size of the maze using command line arguments."
       putStrLn "For example: cabal run maze-maker -- 10 5"
+      putStrLn "The recommended font is \"Square\" by Wouter van Oortmerssen."
+      putStr "Download it here: "
+      hyperlink "https://strlen.com/square/" "https://strlen.com/square/"
+      putStrLn "."
       return (5,5)
     [x,y] -> return (read x,read y)
     _ -> hPutStrLn stderr "Please specify a width and a height." >> exitFailure
