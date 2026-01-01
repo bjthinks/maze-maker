@@ -1,5 +1,6 @@
 module Main where
 
+import qualified Data.Set as S
 import Data.Time.Clock.System
 import Control.Monad.Random
 import Control.Monad.ST.Trans
@@ -100,21 +101,28 @@ m x _ = (x,())
 
 test :: Maze s ()
 test = do
-  xx <- lift getRandom :: Maze s Int
-  line $ "Random Int: " ++ show xx
   nodes <- sequence $ map UF.new [(2,1),(2,3),(1,2),(3,2)]
   _ <- UF.merge m (nodes !! 0) (nodes !! 1)
   _ <- UF.merge m (nodes !! 2) (nodes !! 3)
   labels <- sequence $ map UF.lookup nodes
   line $ "Nodes: " ++ show (map snd labels)
   line ""
-  let width = 13
-      height = 5
+  let width = 79
+      height = 79
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
-  sequence_ $ map (clearSpace maze) [(2,2),(6,1),(6,3),(5,2),(7,2)]
+  let wallLocs = [(x,y) | x <- [1,3..width-2], y <- [2,4..height-3]] ++
+                 [(x,y) | x <- [2,4..width-3], y <- [1,3..height-2]]
+  let walls = S.fromList wallLocs
+      numWalls = S.size walls
+  index <- lift $ getRandomR (0,numWalls-1)
+  let wall = S.elemAt index walls
+      walls' = S.deleteAt index walls
+      wallsLeft = S.size walls'
+  clearSpace maze wall
   prettyPrint maze
+  line $ show numWalls ++ " " ++ show wallsLeft
 
 getNanosSinceEpoch :: IO Integer
 getNanosSinceEpoch = do
