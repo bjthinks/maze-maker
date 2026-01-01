@@ -1,11 +1,15 @@
 module Main where
 
 import qualified Data.Set as S
-import Data.Time.Clock.System
 import Control.Monad.Random
 import Control.Monad.ST.Trans
 import qualified Control.Monad.Union as UF
 import Control.Monad.Writer
+
+import Data.Time.Clock.System (getSystemTime, SystemTime(..))
+import System.Environment (getArgs)
+import System.Exit (exitFailure)
+import System.IO (hPutStrLn, stderr)
 
 type Maze s = STT s (RandT StdGen (WriterT String (UF.UnionM (Int,Int))))
 
@@ -99,16 +103,14 @@ clearSpace maze (x,y) = writeSTArray maze (x,y) True
 m :: l -> l -> (l,())
 m x _ = (x,())
 
-test :: Maze s ()
-test = do
+test :: (Int,Int) -> Maze s ()
+test (width,height) = do
   nodes <- sequence $ map UF.new [(2,1),(2,3),(1,2),(3,2)]
   _ <- UF.merge m (nodes !! 0) (nodes !! 1)
   _ <- UF.merge m (nodes !! 2) (nodes !! 3)
   labels <- sequence $ map UF.lookup nodes
   line $ "Nodes: " ++ show (map snd labels)
   line ""
-  let width = 79
-      height = 79
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
@@ -132,7 +134,19 @@ getNanosSinceEpoch = do
 
 main :: IO ()
 main = do
+  args <- getArgs
+  (width,height) <- case args of
+    [] -> do
+      putStrLn "You may specify the size of the maze using command line arguments."
+      putStrLn "For example: cabal run maze-maker -- 10 5"
+      return (5,5)
+    [x,y] -> return (read x,read y)
+    _ -> hPutStrLn stderr "Please specify a width and a height." >> exitFailure
+  if width <= 1 || height <= 1
+    then hPutStrLn stderr "Width and height must be at least 2." >> exitFailure
+    else return ()
   t <- getNanosSinceEpoch
   let myGen = mkStdGen $ fromInteger t
-      result = UF.run $ runWriterT $ runRandT (runSTT test) myGen
+      result = UF.run $ runWriterT $
+        runRandT (runSTT (test (width*2+1,height*2+1))) myGen
   putStr $ snd result
