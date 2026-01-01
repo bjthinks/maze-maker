@@ -32,6 +32,8 @@ printMazeChar maze (x,y) = do
       left  <- getMaze maze (x-1,y)
       right <- getMaze maze (x+1,y)
       case (above,below,left,right) of
+{-
+        -- light weight lines
         -- pillar
         (True,True,True,True) -> tell "\x2022" -- bullet
         -- end of wall
@@ -54,6 +56,30 @@ printMazeChar maze (x,y) = do
         (True,False,False,False) -> tell "\x252c"
         -- + intersction
         (False,False,False,False) -> tell "\x253c"
+-}
+        -- heavy weight lines
+        -- pillar
+        (True,True,True,True) -> tell "\x25cf"
+        -- end of wall
+        (True,True,True,False) -> tell "\x257a"
+        (True,True,False,True) -> tell "\x2578"
+        (True,False,True,True) -> tell "\x257b"
+        (False,True,True,True) -> tell "\x2579"
+        -- middle of wall
+        (False,False,True,True) -> tell "\x2503"
+        (True,True,False,False) -> tell "\x2501"
+        -- corners
+        (True,False,True,False) -> tell "\x250f"
+        (True,False,False,True) -> tell "\x2513"
+        (False,True,True,False) -> tell "\x2517"
+        (False,True,False,True) -> tell "\x251b"
+        -- T intersections
+        (False,False,False,True) -> tell "\x252b"
+        (False,False,True,False) -> tell "\x2523"
+        (False,True,False,False) -> tell "\x253b"
+        (True,False,False,False) -> tell "\x2533"
+        -- + intersction
+        (False,False,False,False) -> tell "\x254b"
 
 prettyPrintRow :: Int -> STArray s (Int,Int) Bool -> Maze s ()
 prettyPrintRow y maze = do
