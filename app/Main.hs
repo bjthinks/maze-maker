@@ -133,8 +133,8 @@ makeMaze (width,height) = do
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
-  clearSpace maze (0,1)
-  clearSpace maze (width-1,height-2)
+  clearSpace maze (0,1) -- start
+  clearSpace maze (width-1,height-2) -- end
   let wallLocs = [(x,y) | x <- [1,3..width-2], y <- [2,4..height-3]] ++
                  [(x,y) | x <- [2,4..width-3], y <- [1,3..height-2]]
       walls = S.fromList wallLocs
