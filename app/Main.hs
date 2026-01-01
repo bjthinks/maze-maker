@@ -1,5 +1,6 @@
 module Main where
 
+import Data.Array
 import qualified Data.Set as S
 import Control.Monad.Random
 import Control.Monad.ST.Trans
@@ -104,31 +105,42 @@ clearSpace maze (x,y) = writeSTArray maze (x,y) True
 m :: l -> l -> (l,())
 m x _ = (x,())
 
-removeWalls :: STArray s (Int,Int) Bool -> S.Set (Int,Int) -> Int -> Maze s ()
-removeWalls _ _ 0 = return ()
-removeWalls maze walls numToRemove = do
+removeWalls :: STArray s (Int,Int) Bool -> S.Set (Int,Int) ->
+               Array (Int,Int) UF.Node -> Int -> Maze s ()
+removeWalls _ _ _ 0 = return ()
+removeWalls maze walls places numToRemove = do
   let numWalls = S.size walls
-  index <- lift $ getRandomR (0,numWalls-1)
-  let wall = S.elemAt index walls
-      newWalls = S.deleteAt index walls
-  clearSpace maze wall
-  removeWalls maze newWalls $ numToRemove - 1
+  i <- lift $ getRandomR (0,numWalls-1)
+  let wall = S.elemAt i walls
+      (x,y) = wall
+      newWalls = S.deleteAt i walls
+      (side1,side2) = case x `mod` 2 of
+        0 -> ((x-1,y),(x+1,y))
+        _ -> ((x,y-1),(x,y+1))
+  let node1 = places ! side1
+      node2 = places ! side2
+  area1 <- UF.lookup node1
+  area2 <- UF.lookup node2
+  newNumToRemove <- if area1 /= area2
+    then do _ <- lift $ UF.merge m (fst area1) (fst area2)
+            clearSpace maze wall
+            return $ numToRemove - 1
+    else return numToRemove
+  removeWalls maze newWalls places newNumToRemove
 
-test :: (Int,Int) -> Maze s ()
-test (width,height) = do
-  nodes <- sequence $ map UF.new [(2,1),(2,3),(1,2),(3,2)]
-  _ <- UF.merge m (nodes !! 0) (nodes !! 1)
-  _ <- UF.merge m (nodes !! 2) (nodes !! 3)
-  labels <- sequence $ map UF.lookup nodes
-  line $ "Nodes: " ++ show (map snd labels)
-  line ""
+makeMaze :: (Int,Int) -> Maze s ()
+makeMaze (width,height) = do
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
+  clearSpace maze (0,1)
+  clearSpace maze (width-1,height-2)
   let wallLocs = [(x,y) | x <- [1,3..width-2], y <- [2,4..height-3]] ++
                  [(x,y) | x <- [2,4..width-3], y <- [1,3..height-2]]
       walls = S.fromList wallLocs
-  removeWalls maze walls $ (width `div` 2) * (height `div` 2) - 1
+  nodes <- sequence $ map UF.new startingSpaces
+  let places = array ((0,0),(width-1,height-1)) $ zip startingSpaces nodes
+  removeWalls maze walls places $ (width `div` 2) * (height `div` 2) - 1
   prettyPrint maze
 
 getNanosSinceEpoch :: IO Integer
@@ -160,6 +172,6 @@ main = do
   t <- getNanosSinceEpoch
   let myGen = mkStdGen $ fromInteger t
       result = UF.run $ runWriterT $
-        runRandT (runSTT (test (width*2+1,height*2+1))) myGen
+        runRandT (runSTT (makeMaze (width*2+1,height*2+1))) myGen
   putStr $ snd result
   putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
