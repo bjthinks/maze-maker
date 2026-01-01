@@ -35,25 +35,25 @@ printMazeChar maze (x,y) = do
         -- pillar
         (True,True,True,True) -> tell "0"
         -- end of wall
-        (True,True,True,False) -> tell "-"
-        (True,True,False,True) -> tell "-"
-        (True,False,True,True) -> tell "|"
-        (False,True,True,True) -> tell "|"
+        (True,True,True,False) -> tell "\x2500"
+        (True,True,False,True) -> tell "\x2500"
+        (True,False,True,True) -> tell "\x2502"
+        (False,True,True,True) -> tell "\x2502"
         -- middle of wall
-        (False,False,True,True) -> tell "|"
-        (True,True,False,False) -> tell "-"
+        (False,False,True,True) -> tell "\x2502"
+        (True,True,False,False) -> tell "\x2500"
         -- corners
-        (True,False,True,False) -> tell "+"
-        (True,False,False,True) -> tell "+"
-        (False,True,True,False) -> tell "+"
-        (False,True,False,True) -> tell "+"
+        (True,False,True,False) -> tell "\x250c"
+        (True,False,False,True) -> tell "\x2510"
+        (False,True,True,False) -> tell "\x2514"
+        (False,True,False,True) -> tell "\x2518"
         -- T intersections
-        (False,False,False,True) -> tell "+"
-        (False,False,True,False) -> tell "+"
-        (False,True,False,False) -> tell "+"
-        (True,False,False,False) -> tell "+"
+        (False,False,False,True) -> tell "\x2524"
+        (False,False,True,False) -> tell "\x251c"
+        (False,True,False,False) -> tell "\x2534"
+        (True,False,False,False) -> tell "\x252c"
         -- + intersction
-        (False,False,False,False) -> tell "+"
+        (False,False,False,False) -> tell "\x253c"
 
 prettyPrintRow :: Int -> STArray s (Int,Int) Bool -> Maze s ()
 prettyPrintRow y maze = do
@@ -74,26 +74,20 @@ m x _ = (x,())
 
 test :: Maze s ()
 test = do
-  line "testing Maze monad"
   xx <- lift getRandom :: Maze s Int
   line $ "Random Int: " ++ show xx
-  a <- newSTArray (0,9 :: Int) (0 :: Int)
-  writeSTArray a 0 10
-  writeSTArray a 1 100
-  writeSTArray a 9 42
-  f <- freezeSTArray a
-  line $ "Array: " ++ show f
   nodes <- sequence $ map UF.new [(2,1),(2,3),(1,2),(3,2)]
   _ <- UF.merge m (nodes !! 0) (nodes !! 1)
   _ <- UF.merge m (nodes !! 2) (nodes !! 3)
   labels <- sequence $ map UF.lookup nodes
   line $ "Nodes: " ++ show (map snd labels)
   line ""
-  let width = 7
+  let width = 9
       height = 5
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
+  sequence_ $ map (clearSpace maze) [(1,2),(3,2),(2,1),(4,3),(4,1)]
   prettyPrint maze
 
 getNanosSinceEpoch :: IO Integer
