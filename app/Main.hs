@@ -14,14 +14,36 @@ nl = tell "\n"
 line :: String -> Maze s ()
 line s = tell s >> nl
 
+printMazeChar :: Bool -> Char
+printMazeChar True = ' '
+printMazeChar False = '#'
+
+getMaze :: STArray s (Int,Int) Bool -> Int -> Int -> Maze s Bool
+getMaze maze x y = readSTArray maze (x,y)
+
+prettyPrintRow :: Int -> STArray s (Int,Int) Bool -> Maze s ()
+prettyPrintRow y maze = do
+  let ((xmin,_),(xmax,_)) = boundsSTArray maze
+  row <- sequence $ map (\x -> getMaze maze x y) [xmin..xmax]
+  let rowstr = map printMazeChar row
+  line rowstr
+
+prettyPrint :: STArray s (Int,Int) Bool -> Maze s ()
+prettyPrint maze = do
+  let ((_,ymin),(_,ymax)) = boundsSTArray maze
+  sequence_ $ map (flip prettyPrintRow maze) [ymin..ymax]
+
+clearSpace :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
+clearSpace maze (x,y) = writeSTArray maze (x,y) True
+
 m :: l -> l -> (l,())
 m x _ = (x,())
 
 test :: Maze s ()
 test = do
   line "testing Maze monad"
-  x <- lift getRandom :: Maze s Int
-  line $ "Random Int: " ++ show x
+  xx <- lift getRandom :: Maze s Int
+  line $ "Random Int: " ++ show xx
   a <- newSTArray (0,9 :: Int) (0 :: Int)
   writeSTArray a 0 10
   writeSTArray a 1 100
@@ -33,7 +55,13 @@ test = do
   _ <- UF.merge m (nodes !! 2) (nodes !! 3)
   labels <- sequence $ map UF.lookup nodes
   line $ "Nodes: " ++ show (map snd labels)
-  return ()
+  line ""
+  let width = 5
+      height = 5
+  maze <- newSTArray ((0,0),(width-1,height-1)) False
+  let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
+  sequence_ $ map (clearSpace maze) startingSpaces
+  prettyPrint maze
 
 getNanosSinceEpoch :: IO Integer
 getNanosSinceEpoch = do
@@ -44,5 +72,6 @@ getNanosSinceEpoch = do
 main :: IO ()
 main = do
   t <- getNanosSinceEpoch
-  putStr $ snd $ UF.run $ runWriterT $ runRandT (runSTT test) $
-    mkStdGen $ fromInteger t
+  let myGen = mkStdGen $ fromInteger t
+      result = UF.run $ runWriterT $ runRandT (runSTT test) myGen
+  putStr $ snd result
