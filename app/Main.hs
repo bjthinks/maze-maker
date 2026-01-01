@@ -14,19 +14,52 @@ nl = tell "\n"
 line :: String -> Maze s ()
 line s = tell s >> nl
 
-printMazeChar :: Bool -> Char
-printMazeChar True = ' '
-printMazeChar False = '#'
+getMaze :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s Bool
+getMaze maze (x,y) = do
+  let ((xmin,ymin),(xmax,ymax)) = boundsSTArray maze
+  if x < xmin || x > xmax || y < ymin || y > ymax
+    then return True
+    else readSTArray maze (x,y)
 
-getMaze :: STArray s (Int,Int) Bool -> Int -> Int -> Maze s Bool
-getMaze maze x y = readSTArray maze (x,y)
+printMazeChar :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
+printMazeChar maze (x,y) = do
+  b <- getMaze maze (x,y)
+  case b of
+    True -> tell " "
+    False -> do
+      above <- getMaze maze (x,y-1)
+      below <- getMaze maze (x,y+1)
+      left  <- getMaze maze (x-1,y)
+      right <- getMaze maze (x+1,y)
+      case (above,below,left,right) of
+        -- pillar
+        (True,True,True,True) -> tell "0"
+        -- end of wall
+        (True,True,True,False) -> tell "-"
+        (True,True,False,True) -> tell "-"
+        (True,False,True,True) -> tell "|"
+        (False,True,True,True) -> tell "|"
+        -- middle of wall
+        (False,False,True,True) -> tell "|"
+        (True,True,False,False) -> tell "-"
+        -- corners
+        (True,False,True,False) -> tell "+"
+        (True,False,False,True) -> tell "+"
+        (False,True,True,False) -> tell "+"
+        (False,True,False,True) -> tell "+"
+        -- T intersections
+        (False,False,False,True) -> tell "+"
+        (False,False,True,False) -> tell "+"
+        (False,True,False,False) -> tell "+"
+        (True,False,False,False) -> tell "+"
+        -- + intersction
+        (False,False,False,False) -> tell "+"
 
 prettyPrintRow :: Int -> STArray s (Int,Int) Bool -> Maze s ()
 prettyPrintRow y maze = do
   let ((xmin,_),(xmax,_)) = boundsSTArray maze
-  row <- sequence $ map (\x -> getMaze maze x y) [xmin..xmax]
-  let rowstr = map printMazeChar row
-  line rowstr
+  sequence_ $ map (\x -> printMazeChar maze (x,y)) [xmin..xmax]
+  nl
 
 prettyPrint :: STArray s (Int,Int) Bool -> Maze s ()
 prettyPrint maze = do
@@ -56,7 +89,7 @@ test = do
   labels <- sequence $ map UF.lookup nodes
   line $ "Nodes: " ++ show (map snd labels)
   line ""
-  let width = 5
+  let width = 7
       height = 5
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
