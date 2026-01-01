@@ -82,12 +82,12 @@ test = do
   labels <- sequence $ map UF.lookup nodes
   line $ "Nodes: " ++ show (map snd labels)
   line ""
-  let width = 9
+  let width = 13
       height = 5
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
-  sequence_ $ map (clearSpace maze) [(1,2),(3,2),(2,1),(2,3),(4,3),(4,1)]
+  sequence_ $ map (clearSpace maze) [(2,2),(6,1),(6,3),(5,2),(7,2)]
   prettyPrint maze
 
 getNanosSinceEpoch :: IO Integer
