@@ -18,7 +18,7 @@ getMaze :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s Bool
 getMaze maze (x,y) = do
   let ((xmin,ymin),(xmax,ymax)) = boundsSTArray maze
   if x < xmin || x > xmax || y < ymin || y > ymax
-    then return True
+    then return True -- out of bounds is an empty space to aid printing
     else readSTArray maze (x,y)
 
 printMazeChar :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
@@ -33,12 +33,12 @@ printMazeChar maze (x,y) = do
       right <- getMaze maze (x+1,y)
       case (above,below,left,right) of
         -- pillar
-        (True,True,True,True) -> tell "0"
+        (True,True,True,True) -> tell "\x2022" -- bullet
         -- end of wall
-        (True,True,True,False) -> tell "\x2500"
-        (True,True,False,True) -> tell "\x2500"
-        (True,False,True,True) -> tell "\x2502"
-        (False,True,True,True) -> tell "\x2502"
+        (True,True,True,False) -> tell "\x2576"
+        (True,True,False,True) -> tell "\x2574"
+        (True,False,True,True) -> tell "\x2577"
+        (False,True,True,True) -> tell "\x2575"
         -- middle of wall
         (False,False,True,True) -> tell "\x2502"
         (True,True,False,False) -> tell "\x2500"
@@ -87,7 +87,7 @@ test = do
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
   sequence_ $ map (clearSpace maze) startingSpaces
-  sequence_ $ map (clearSpace maze) [(1,2),(3,2),(2,1),(4,3),(4,1)]
+  sequence_ $ map (clearSpace maze) [(1,2),(3,2),(2,1),(2,3),(4,3),(4,1)]
   prettyPrint maze
 
 getNanosSinceEpoch :: IO Integer
