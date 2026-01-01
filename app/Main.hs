@@ -7,7 +7,7 @@ import qualified Control.Monad.Union as UF
 import Control.Monad.Writer
 
 import Data.Time.Clock.System (getSystemTime, SystemTime(..))
-import System.Console.ANSI (hyperlink)
+import System.Console.ANSI
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -150,8 +150,12 @@ main = do
   if width <= 1 || height <= 1
     then hPutStrLn stderr "Width and height must be at least 2." >> exitFailure
     else return ()
+  putStr $ setSGRCode [SetColor Foreground Vivid White,
+                       SetColor Background Dull Black] ++
+           clearFromCursorToScreenEndCode
   t <- getNanosSinceEpoch
   let myGen = mkStdGen $ fromInteger t
       result = UF.run $ runWriterT $
         runRandT (runSTT (test (width*2+1,height*2+1))) myGen
   putStr $ snd result
+  putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
