@@ -66,7 +66,7 @@ startPlaying = do
   eventLoop
 
 style :: Attr
-style = defAttr `withForeColor` white `withBackColor` black
+style = defAttr `withForeColor` brightWhite `withBackColor` black
 
 makeBasePicture :: Op ()
 makeBasePicture = do
@@ -81,7 +81,7 @@ makeBasePicture = do
     { picBackground = Background ' ' style }
 
 playerStyle :: Attr
-playerStyle = defAttr `withForeColor` black `withBackColor` white
+playerStyle = defAttr `withForeColor` black `withBackColor` brightGreen
 
 playerImage :: Op Image
 playerImage = do
