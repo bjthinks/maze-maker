@@ -46,14 +46,6 @@ getYMax = fst <$> getBR
 getXMax :: Op Int
 getXMax = snd <$> getBR
 
-checkForWin :: Op Bool
-checkForWin = do
-  (y,x) <- get
-  (ymax,xmax) <- getBR
-  if y == ymax-1 && x == xmax
-    then return True
-    else return False
-
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
 
@@ -82,28 +74,13 @@ getEvent = do
   vty <- getVty
   liftIO $ nextEvent vty
 
-eventLoop :: Op String
-eventLoop = do
-  drawScreen
-  e <- getEvent
-  case e of
-    EvKey (KChar 'q') [] -> mzero
-    EvKey KEsc [] -> mzero
-    EvKey (KChar 'h') [] -> goLeft
-    EvKey (KChar 'l') [] -> goRight
-    EvKey (KChar 'k') [] -> goUp
-    EvKey (KChar 'j') [] -> goDown
-    EvKey (KChar 'w') [] -> goUp
-    EvKey (KChar 'a') [] -> goLeft
-    EvKey (KChar 's') [] -> goDown
-    EvKey (KChar 'd') [] -> goRight
-    EvKey KUp    [] -> goUp
-    EvKey KLeft  [] -> goLeft
-    EvKey KDown  [] -> goDown
-    EvKey KRight [] -> goRight
-    _ -> return ()
-  w <- checkForWin
-  if w then return "Congratulations! You won!" else eventLoop
+checkForWin :: Op Bool
+checkForWin = do
+  (y,x) <- get
+  (ymax,xmax) <- getBR
+  if y == ymax-1 && x == xmax
+    then return True
+    else return False
 
 goLeft :: Op ()
 goLeft = do
@@ -140,3 +117,26 @@ goDown = do
   let y' = if y < ymax then y+1 else y
       c = maze ! (y',x)
   put $ if c == ' ' then (y',x) else (y,x)
+
+eventLoop :: Op String
+eventLoop = do
+  drawScreen
+  e <- getEvent
+  case e of
+    EvKey (KChar 'q') [] -> mzero
+    EvKey KEsc [] -> mzero
+    EvKey (KChar 'h') [] -> goLeft
+    EvKey (KChar 'l') [] -> goRight
+    EvKey (KChar 'k') [] -> goUp
+    EvKey (KChar 'j') [] -> goDown
+    EvKey (KChar 'w') [] -> goUp
+    EvKey (KChar 'a') [] -> goLeft
+    EvKey (KChar 's') [] -> goDown
+    EvKey (KChar 'd') [] -> goRight
+    EvKey KUp    [] -> goUp
+    EvKey KLeft  [] -> goLeft
+    EvKey KDown  [] -> goDown
+    EvKey KRight [] -> goRight
+    _ -> return ()
+  w <- checkForWin
+  if w then return "Congratulations! You won!" else eventLoop
