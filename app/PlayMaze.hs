@@ -58,7 +58,8 @@ basePicture = do
   ((ymin,xmin),(ymax,xmax)) <- getBounds
   let rows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]] ++
         ["arrows, wasd, or hjkl to move, q or ESC to quit"]
-  return $ picForImage $ foldr1 (<->) $ map (string style) rows
+  return $ (picForImage (foldr1 (<->) $ map (string style) rows))
+    { picBackground = Background ' ' style }
 
 playerImage :: Op Image
 playerImage = do
