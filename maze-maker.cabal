@@ -51,7 +51,7 @@ extra-doc-files:
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+    ghc-options: -Wall
 
 executable maze-maker
     -- Import common warning flags.
