@@ -41,7 +41,7 @@ printMaze maze = do
     [[setCursorPosition y 0] ++ [putChar (maze ! (y,x)) | x <- [xmin..xmax]]
     | y <- [ymin..ymax]]
   setCursorPosition (ymax+1) 0
-  putStr "hjkl to move, q or ESC to quit"
+  putStr "wasd or hjkl to move, q or ESC to quit"
 
 eventLoop :: Array (Int,Int) Char -> (Int,Int) -> IO String
 eventLoop maze (y,x) = do
@@ -60,6 +60,10 @@ eventLoop maze (y,x) = do
       'l' -> goRight maze (y,x)
       'k' -> goUp maze (y,x)
       'j' -> goDown maze (y,x)
+      'w' -> goUp maze (y,x)
+      'a' -> goLeft maze (y,x)
+      's' -> goDown maze (y,x)
+      'd' -> goRight maze (y,x)
       _ -> eventLoop maze (y,x)
 
 goLeft :: Array (Int,Int) Char -> (Int,Int) -> IO String
