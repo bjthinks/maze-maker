@@ -3,7 +3,6 @@ module PlayMaze (playMaze) where
 import Control.Exception (bracket)
 import Data.Array
 import System.IO
-import Control.Concurrent (threadDelay)
 
 setup :: IO (BufferMode,Bool,BufferMode)
 setup = do
@@ -25,6 +24,17 @@ playMaze :: Array (Int,Int) Char -> IO ()
 playMaze maze = bracket setup cleanup $ const $ playMaze' maze
 
 playMaze' :: Array (Int,Int) Char -> IO ()
-playMaze' _ = do
-  putStr "Delaying for 3 seconds"
-  threadDelay 3000000
+playMaze' maze = do
+  printMaze maze
+  eventLoop maze
+
+printMaze :: Array (Int,Int) Char -> IO ()
+printMaze _ = return ()
+
+eventLoop :: Array (Int,Int) Char -> IO ()
+eventLoop maze = do
+  k <- getChar
+  putStr $ "Key: " ++ [k] ++ " "
+  if k == 'q' || k == '\x001b'
+    then return ()
+    else eventLoop maze
