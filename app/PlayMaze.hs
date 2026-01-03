@@ -4,30 +4,12 @@ import Control.Exception (bracket)
 import Data.Array
 import Graphics.Vty
 import Graphics.Vty.CrossPlatform
-import System.Console.ANSI
-import System.IO
-
-setup :: IO (Vty,BufferMode)
-setup = do
-  vty <- mkVty defaultConfig
-  oldOutputBuffering <- hGetBuffering stdout
-  hSetBuffering stdout NoBuffering
-  useAlternateScreenBuffer
-  disableLineWrap
-  return (vty,oldOutputBuffering)
-
-cleanup :: (Vty,BufferMode) -> IO ()
-cleanup (vty,oldOutputBuffering) = do
-  shutdown vty
-  enableLineWrap
-  useNormalScreenBuffer
-  hSetBuffering stdout oldOutputBuffering
 
 playMaze :: Array (Int,Int) Char -> IO String
-playMaze maze = bracket setup cleanup $ playMaze' maze
+playMaze maze = bracket (mkVty defaultConfig) shutdown $ playMaze' maze
 
-playMaze' :: Array (Int,Int) Char -> (Vty,BufferMode) -> IO String
-playMaze' maze (vty,_) = eventLoop vty maze (1,0)
+playMaze' :: Array (Int,Int) Char -> Vty -> IO String
+playMaze' maze vty = eventLoop vty maze (1,0)
 
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
