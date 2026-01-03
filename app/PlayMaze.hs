@@ -34,7 +34,10 @@ playMaze' maze = do
 
 printMaze :: Array (Int,Int) Char -> IO ()
 printMaze maze = do
-  return ()
+  clearScreen
+  let ((ymin,xmin),(ymax,xmax)) = bounds maze
+  sequence_ $ do y <- [ymin..ymax]
+                 [setCursorPosition y 0] ++ [putChar (maze ! (y,x)) | x <- [xmin..xmax]]
 
 eventLoop :: Array (Int,Int) Char -> IO ()
 eventLoop maze = do

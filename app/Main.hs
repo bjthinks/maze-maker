@@ -93,7 +93,7 @@ prettyPrint :: Array (Int,Int) Bool -> Array (Int,Int) Char
 prettyPrint maze =
   let ((xmin,ymin),(xmax,ymax)) = bounds maze
       chars = concat $ map (flip prettyPrintRow maze) [ymin..ymax]
-  in listArray ((xmin,ymin),(xmax,ymax)) chars
+  in listArray ((ymin,xmin),(ymax,xmax)) chars
 
 clearSpace :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
 clearSpace maze (x,y) = writeSTArray maze (x,y) True
