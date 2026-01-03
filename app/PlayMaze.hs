@@ -28,18 +28,18 @@ playMaze maze = bracket setup cleanup $ playMaze' maze
 
 playMaze' :: Array (Int,Int) Char -> (Vty,BufferMode) -> IO String
 playMaze' maze (vty,_) = do
-  printMaze maze
+  printMaze vty maze
   eventLoop vty maze (1,0)
 
-printMaze :: Array (Int,Int) Char -> IO ()
-printMaze maze = do
-  clearScreen
+style :: Attr
+style = defAttr `withForeColor` white `withBackColor` black
+
+printMaze :: Vty -> Array (Int,Int) Char -> IO ()
+printMaze vty maze =
   let ((ymin,xmin),(ymax,xmax)) = bounds maze
-  sequence_ $ concat $
-    [[setCursorPosition y 0] ++ [putChar (maze ! (y,x)) | x <- [xmin..xmax]]
-    | y <- [ymin..ymax]]
-  setCursorPosition (ymax+1) 0
-  putStr "arrows, wasd, or hjkl to move, q or ESC to quit"
+      mazeRows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]]
+      mazeLines = map (string style) mazeRows
+  in update vty $ picForImage $ foldr1 (<->) mazeLines
 
 eventLoop :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
 eventLoop vty maze (y,x) = do
