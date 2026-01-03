@@ -19,6 +19,7 @@ setup = do
 
 cleanup :: (BufferMode,Bool,BufferMode) -> IO ()
 cleanup (oldInputBuffering,oldEcho,oldOutputBuffering) = do
+  enableLineWrap
   useNormalScreenBuffer
   hSetBuffering stdin oldInputBuffering
   hSetEcho stdin oldEcho
