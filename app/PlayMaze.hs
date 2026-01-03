@@ -2,6 +2,7 @@ module PlayMaze (playMaze) where
 
 import Control.Exception (bracket)
 import Data.Array
+import System.Console.ANSI
 import System.IO
 
 setup :: IO (BufferMode,Bool,BufferMode)
@@ -12,10 +13,12 @@ setup = do
   hSetBuffering stdin NoBuffering
   hSetEcho stdin False
   hSetBuffering stdout NoBuffering
+  useAlternateScreenBuffer
   return (oldInputBuffering,oldEcho,oldOutputBuffering)
 
 cleanup :: (BufferMode,Bool,BufferMode) -> IO ()
 cleanup (oldInputBuffering,oldEcho,oldOutputBuffering) = do
+  useNormalScreenBuffer
   hSetBuffering stdin oldInputBuffering
   hSetEcho stdin oldEcho
   hSetBuffering stdout oldOutputBuffering
@@ -29,12 +32,12 @@ playMaze' maze = do
   eventLoop maze
 
 printMaze :: Array (Int,Int) Char -> IO ()
-printMaze _ = return ()
+printMaze maze = do
+  return ()
 
 eventLoop :: Array (Int,Int) Char -> IO ()
 eventLoop maze = do
   k <- getChar
-  putStr $ "Key: " ++ [k] ++ " "
   if k == 'q' || k == '\x001b'
     then return ()
     else eventLoop maze
