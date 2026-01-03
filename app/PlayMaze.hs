@@ -1,6 +1,8 @@
 module PlayMaze (playMaze) where
 
 import Control.Exception (bracket)
+import Control.Monad
+import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Array
@@ -8,13 +10,14 @@ import Graphics.Vty
 import Graphics.Vty.CrossPlatform
 
 type Maze = Array (Int,Int) Char
-type Op = StateT (Int,Int) (ReaderT (Vty,Maze) IO) -- state is player's (y,x)
+ -- state is player's (y,x)
+type Op = MaybeT (StateT (Int,Int) (ReaderT (Vty,Maze) IO))
 
-playMaze :: Maze -> IO String
+playMaze :: Maze -> IO (Maybe String)
 playMaze maze = bracket (mkVty defaultConfig) shutdown $ playMaze' maze
 
-playMaze' :: Maze -> Vty -> IO String
-playMaze' maze vty = runReaderT (evalStateT eventLoop (1,0)) (vty,maze)
+playMaze' :: Maze -> Vty -> IO (Maybe String)
+playMaze' maze vty = runReaderT (evalStateT (runMaybeT eventLoop) (1,0)) (vty,maze)
 
 getVty :: Op Vty
 getVty = fst <$> ask
@@ -22,82 +25,118 @@ getVty = fst <$> ask
 getMaze :: Op Maze
 getMaze = snd <$> ask
 
+getBounds :: Op ((Int,Int),(Int,Int))
+getBounds = bounds <$> getMaze
+
+getUL :: Op (Int,Int)
+getUL = fst <$> getBounds
+
+getYMin :: Op Int
+getYMin = fst <$> getUL
+
+getXMin :: Op Int
+getXMin = snd <$> getUL
+
+getBR :: Op (Int,Int)
+getBR = snd <$> getBounds
+
+getYMax :: Op Int
+getYMax = fst <$> getBR
+
+getXMax :: Op Int
+getXMax = snd <$> getBR
+
+checkForWin :: Op Bool
+checkForWin = do
+  (y,x) <- get
+  (ymax,xmax) <- getBR
+  if y == ymax-1 && x == xmax
+    then return True
+    else return False
+
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
 
-basePicture :: Maze -> Picture
-basePicture maze =
-  let ((ymin,xmin),(ymax,xmax)) = bounds maze
-      mazeRows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]]
-      infoRow = "wasd or hjkl to move, q or ESC to quit"
-  in picForImage $ foldr1 (<->) $ map (string style) (mazeRows ++ [infoRow])
+basePicture :: Op Picture
+basePicture = do
+  maze <- getMaze
+  ((ymin,xmin),(ymax,xmax)) <- getBounds
+  let rows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]] ++
+        ["wasd or hjkl to move, q or ESC to quit"]
+  return $ picForImage $ foldr1 (<->) $ map (string style) rows
+
+playerImage :: Op Image
+playerImage = do
+  (y,x) <- get
+  return $ translate x y $ char style '@'
+
+drawScreen :: Op ()
+drawScreen = do
+  base <- basePicture
+  player <- playerImage
+  vty <- getVty
+  liftIO $ update vty $ addToTop base player
+
+getEvent :: Op Event
+getEvent = do
+  vty <- getVty
+  liftIO $ nextEvent vty
 
 eventLoop :: Op String
 eventLoop = do
-  maze <- getMaze
-  (y,x) <- get
-  let ((_,_),(ymax,xmax)) = bounds maze
-  if y == ymax-1 && x == xmax
-    then return "Congratulations! You won!\n"
-    else do
-    let playerImage = translate x y (char style '@')
-        composition = addToTop (basePicture maze) playerImage
-    vty <- getVty
-    liftIO $ update vty composition
-    e <- liftIO $ nextEvent vty
-    case e of
-      EvKey (KChar 'q') [] -> return ""
-      EvKey KEsc [] -> return ""
-      EvKey (KChar 'h') [] -> goLeft
-      EvKey (KChar 'l') [] -> goRight
-      EvKey (KChar 'k') [] -> goUp
-      EvKey (KChar 'j') [] -> goDown
-      EvKey (KChar 'w') [] -> goUp
-      EvKey (KChar 'a') [] -> goLeft
-      EvKey (KChar 's') [] -> goDown
-      EvKey (KChar 'd') [] -> goRight
-      EvKey KUp    [] -> goUp
-      EvKey KLeft  [] -> goLeft
-      EvKey KDown  [] -> goDown
-      EvKey KRight [] -> goRight
-      _ -> eventLoop
+  drawScreen
+  e <- getEvent
+  case e of
+    EvKey (KChar 'q') [] -> mzero
+    EvKey KEsc [] -> mzero
+    EvKey (KChar 'h') [] -> goLeft
+    EvKey (KChar 'l') [] -> goRight
+    EvKey (KChar 'k') [] -> goUp
+    EvKey (KChar 'j') [] -> goDown
+    EvKey (KChar 'w') [] -> goUp
+    EvKey (KChar 'a') [] -> goLeft
+    EvKey (KChar 's') [] -> goDown
+    EvKey (KChar 'd') [] -> goRight
+    EvKey KUp    [] -> goUp
+    EvKey KLeft  [] -> goLeft
+    EvKey KDown  [] -> goDown
+    EvKey KRight [] -> goRight
+    _ -> return ()
+  w <- checkForWin
+  if w then return "Congratulations! You won!" else eventLoop
 
-goLeft :: Op String
+goLeft :: Op ()
 goLeft = do
   maze <- getMaze
+  xmin <- getXMin
   (y,x) <- get
-  let ((_,xmin),(_,_)) = bounds maze
-      x' = if x > xmin then x-1 else x
+  let x' = if x > xmin then x-1 else x
       c = maze ! (y,x')
   put $ if c == ' ' then (y,x') else (y,x)
-  eventLoop
 
-goRight :: Op String
+goRight :: Op ()
 goRight = do
   maze <- getMaze
+  xmax <- getXMax
   (y,x) <- get
-  let ((_,_),(_,xmax)) = bounds maze
-      x' = if x < xmax then x+1 else x
+  let x' = if x < xmax then x+1 else x
       c = maze ! (y,x')
   put $ if c == ' ' then (y,x') else (y,x)
-  eventLoop
 
-goUp :: Op String
+goUp :: Op ()
 goUp = do
   maze <- getMaze
+  ymin <- getYMin
   (y,x) <- get
-  let ((ymin,_),(_,_)) = bounds maze
-      y' = if y > ymin then y-1 else y
+  let y' = if y > ymin then y-1 else y
       c = maze ! (y',x)
   put $ if c == ' ' then (y',x) else (y,x)
-  eventLoop
 
-goDown :: Op String
+goDown :: Op ()
 goDown = do
   maze <- getMaze
+  ymax <- getYMax
   (y,x) <- get
-  let ((_,_),(ymax,_)) = bounds maze
-      y' = if y < ymax then y+1 else y
+  let y' = if y < ymax then y+1 else y
       c = maze ! (y',x)
   put $ if c == ' ' then (y',x) else (y,x)
-  eventLoop

@@ -182,5 +182,9 @@ main = do
       mazeChars = prettyPrint maze
   case interactive of
     False -> putStr $ addNewlines (width*2+1) $ elems mazeChars
-    True -> playMaze mazeChars >>= putStr
+    True -> do
+      maybeMsg <- playMaze mazeChars
+      case maybeMsg of
+        Just msg -> putStrLn msg
+        Nothing -> return ()
   putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
