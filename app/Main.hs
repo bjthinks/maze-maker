@@ -12,6 +12,8 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 
+import PlayMaze
+
 type Maze s = STT s (RandT StdGen (UF.UnionM (Int,Int)))
 
 getMaze :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s Bool
@@ -148,9 +150,6 @@ getNanosSinceEpoch = do
     (MkSystemTime s ns) <- getSystemTime
     -- Convert seconds to nanoseconds and add the current nanosecond fraction
     return $ toInteger s * 10^(9 :: Int) + toInteger ns
-
-playMaze :: a -> IO ()
-playMaze _ = return ()
 
 main :: IO ()
 main = do
