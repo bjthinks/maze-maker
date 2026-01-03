@@ -49,6 +49,9 @@ getXMax = snd <$> getBR
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
 
+playerStyle :: Attr
+playerStyle = defAttr `withForeColor` black `withBackColor` white
+
 basePicture :: Op Picture
 basePicture = do
   maze <- getMaze
@@ -60,7 +63,7 @@ basePicture = do
 playerImage :: Op Image
 playerImage = do
   (y,x) <- get
-  return $ translate x y $ char style '@'
+  return $ translate x y $ char playerStyle '@'
 
 drawScreen :: Op ()
 drawScreen = do
