@@ -14,6 +14,7 @@ setup = do
   hSetEcho stdin False
   hSetBuffering stdout NoBuffering
   useAlternateScreenBuffer
+  disableLineWrap
   return (oldInputBuffering,oldEcho,oldOutputBuffering)
 
 cleanup :: (BufferMode,Bool,BufferMode) -> IO ()
