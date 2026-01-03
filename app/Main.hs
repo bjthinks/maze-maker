@@ -171,9 +171,6 @@ main = do
   if width <= 1 || height <= 1
     then hPutStrLn stderr "Width and height must be at least 2." >> exitFailure
     else return ()
-  putStr $ setSGRCode [SetColor Foreground Vivid White,
-                       SetColor Background Dull Black] ++
-           clearFromCursorToScreenEndCode
   t <- getNanosSinceEpoch
   let myGen = mkStdGen $ fromInteger t
       result = UF.run $
@@ -181,10 +178,14 @@ main = do
       maze = fst result
       mazeChars = prettyPrint maze
   case interactive of
-    False -> putStr $ addNewlines (width*2+1) $ elems mazeChars
+    False -> do
+      putStr $ setSGRCode [SetColor Foreground Vivid White,
+                           SetColor Background Dull Black] ++
+        clearFromCursorToScreenEndCode
+      putStr $ addNewlines (width*2+1) $ elems mazeChars
+      putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
     True -> do
       maybeMsg <- playMaze mazeChars
       case maybeMsg of
         Just msg -> putStrLn msg
         Nothing -> return ()
-  putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
