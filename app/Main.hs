@@ -90,7 +90,7 @@ prettyPrintRow y maze = do
   let ((xmin,_),(xmax,_)) = bounds maze
   map (\x -> printMazeChar maze (x,y)) [xmin..xmax]
 
-prettyPrint :: PreMaze -> Maze
+prettyPrint :: PreMaze -> MazeArray
 prettyPrint maze =
   let ((xmin,ymin),(xmax,ymax)) = bounds maze
       chars = concat $ map (flip prettyPrintRow maze) [ymin..ymax]

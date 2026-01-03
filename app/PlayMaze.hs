@@ -1,6 +1,7 @@
-module PlayMaze (playMaze, Maze) where
+module PlayMaze (playMaze, MazeArray) where
 
 import Control.Exception (bracket)
+import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
@@ -9,118 +10,146 @@ import Data.Array
 import Graphics.Vty
 import Graphics.Vty.CrossPlatform
 
-type Maze = Array (Int,Int) Char
- -- state is player's (y,x)
-type Op = MaybeT (StateT (Int,Int) (ReaderT (Vty,Maze) IO))
+type MazeArray = Array (Int,Int) Char
 
-playMaze :: Maze -> IO (Maybe String)
-playMaze maze = bracket (mkVty defaultConfig) shutdown $ playMaze' maze
+data Environment = Environment
+  { _maze :: Maze
+  , _vty :: Vty
+  }
 
-playMaze' :: Maze -> Vty -> IO (Maybe String)
-playMaze' maze vty = runReaderT (evalStateT (runMaybeT eventLoop) (1,0)) (vty,maze)
+data Maze = Maze
+  { _xMin :: Int
+  , _yMin :: Int
+  , _xMax :: Int
+  , _yMax :: Int
+  , _chars :: MazeArray
+  }
 
-getVty :: Op Vty
-getVty = fst <$> ask
+makeEnvironment :: MazeArray -> Vty -> Environment
+makeEnvironment m v =
+  let ((ymin_,xmin_),(ymax_,xmax_)) = bounds m
+  in Environment (Maze xmin_ ymin_ xmax_ ymax_ m) v
 
-getMaze :: Op Maze
-getMaze = snd <$> ask
+$(makeLenses ''Environment)
+$(makeLenses ''Maze)
 
-getBounds :: Op ((Int,Int),(Int,Int))
-getBounds = bounds <$> getMaze
+data GameState = GameState
+  { _basePicture :: Picture
+  , _playerLoc :: Location
+  }
 
-getUL :: Op (Int,Int)
-getUL = fst <$> getBounds
+data Location = Location
+  { _locX :: Int
+  , _locY :: Int
+  }
 
-getYMin :: Op Int
-getYMin = fst <$> getUL
+$(makeLenses ''GameState)
+$(makeLenses ''Location)
 
-getXMin :: Op Int
-getXMin = snd <$> getUL
+type Op = MaybeT (StateT GameState (ReaderT Environment IO))
 
-getBR :: Op (Int,Int)
-getBR = snd <$> getBounds
+startState :: GameState
+startState = GameState bot (Location 0 1)
+  where
+    bot = bot
 
-getYMax :: Op Int
-getYMax = fst <$> getBR
+playMaze :: MazeArray -> IO (Maybe String)
+playMaze m = bracket (mkVty defaultConfig) shutdown $ playMaze' m
 
-getXMax :: Op Int
-getXMax = snd <$> getBR
+playMaze' :: MazeArray -> Vty -> IO (Maybe String)
+playMaze' m v = runReaderT (evalStateT (runMaybeT startPlaying) startState)
+  (makeEnvironment m v)
+
+startPlaying :: Op String
+startPlaying = do
+  makeBasePicture
+  eventLoop
 
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
 
+makeBasePicture :: Op ()
+makeBasePicture = do
+  xmin <- view (maze . xMin)
+  ymin <- view (maze . yMin)
+  xmax <- view (maze . xMax)
+  ymax <- view (maze . yMax)
+  cs <- view (maze . chars)
+  let rows = [[cs ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]] ++
+        ["arrows, wasd, or hjkl to move, q or ESC to quit"]
+  basePicture .= (picForImage (foldr1 (<->) $ map (string style) rows))
+    { picBackground = Background ' ' style }
+
 playerStyle :: Attr
 playerStyle = defAttr `withForeColor` black `withBackColor` white
 
-basePicture :: Op Picture
-basePicture = do
-  maze <- getMaze
-  ((ymin,xmin),(ymax,xmax)) <- getBounds
-  let rows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]] ++
-        ["arrows, wasd, or hjkl to move, q or ESC to quit"]
-  return $ (picForImage (foldr1 (<->) $ map (string style) rows))
-    { picBackground = Background ' ' style }
-
 playerImage :: Op Image
 playerImage = do
-  (y,x) <- get
+  x <- use (playerLoc . locX)
+  y <- use (playerLoc . locY)
   return $ translate x y $ char playerStyle '@'
 
 drawScreen :: Op ()
 drawScreen = do
-  base <- basePicture
+  base <- use basePicture
   player <- playerImage
-  vty <- getVty
-  liftIO $ update vty $ addToTop base player
+  v <- view vty
+  liftIO $ update v $ addToTop base player
 
 getEvent :: Op Event
 getEvent = do
-  vty <- getVty
-  liftIO $ nextEvent vty
+  v <- view vty
+  liftIO $ nextEvent v
 
 checkForWin :: Op Bool
 checkForWin = do
-  (y,x) <- get
-  (ymax,xmax) <- getBR
-  if y == ymax-1 && x == xmax
+  x <- use (playerLoc . locX)
+  y <- use (playerLoc . locY)
+  xmax <- view (maze . xMax)
+  ymax <- view (maze . yMax)
+  if x == xmax && y == ymax-1
     then return True
     else return False
 
 goLeft :: Op ()
 goLeft = do
-  maze <- getMaze
-  xmin <- getXMin
-  (y,x) <- get
+  x <- use (playerLoc . locX)
+  y <- use (playerLoc . locY)
+  xmin <- view (maze . xMin)
+  cs <- view (maze . chars)
   let x' = if x > xmin then x-1 else x
-      c = maze ! (y,x')
-  put $ if c == ' ' then (y,x') else (y,x)
+      c = cs ! (y,x')
+  playerLoc . locX .= if c == ' ' then x' else x
 
 goRight :: Op ()
 goRight = do
-  maze <- getMaze
-  xmax <- getXMax
-  (y,x) <- get
+  x <- use (playerLoc . locX)
+  y <- use (playerLoc . locY)
+  xmax <- view (maze . xMax)
+  cs <- view (maze . chars)
   let x' = if x < xmax then x+1 else x
-      c = maze ! (y,x')
-  put $ if c == ' ' then (y,x') else (y,x)
+      c = cs ! (y,x')
+  playerLoc . locX .= if c == ' ' then x' else x
 
 goUp :: Op ()
 goUp = do
-  maze <- getMaze
-  ymin <- getYMin
-  (y,x) <- get
+  x <- use (playerLoc . locX)
+  y <- use (playerLoc . locY)
+  ymin <- view (maze . yMin)
+  cs <- view (maze . chars)
   let y' = if y > ymin then y-1 else y
-      c = maze ! (y',x)
-  put $ if c == ' ' then (y',x) else (y,x)
+      c = cs ! (y',x)
+  playerLoc . locY .= if c == ' ' then y' else y
 
 goDown :: Op ()
 goDown = do
-  maze <- getMaze
-  ymax <- getYMax
-  (y,x) <- get
+  x <- use (playerLoc . locX)
+  y <- use (playerLoc . locY)
+  ymax <- view (maze . yMax)
+  cs <- view (maze . chars)
   let y' = if y < ymax then y+1 else y
-      c = maze ! (y',x)
-  put $ if c == ' ' then (y',x) else (y,x)
+      c = cs ! (y',x)
+  playerLoc . locY .= if c == ' ' then y' else y
 
 eventLoop :: Op String
 eventLoop = do
