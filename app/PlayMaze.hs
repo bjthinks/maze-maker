@@ -51,6 +51,7 @@ eventLoop vty maze (y,x) = do
     putChar '@'
     cursorBackward 1
     e <- nextEvent vty
+    putChar ' '
     case e of
       EvKey (KChar 'q') [] -> return ""
       EvKey KEsc [] -> return ""
@@ -70,7 +71,6 @@ eventLoop vty maze (y,x) = do
 
 goLeft :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
 goLeft vty maze (y,x) = do
-  putChar ' '
   let ((_,xmin),(_,_)) = bounds maze
       x' = if x > xmin then x-1 else x
       c = maze ! (y,x')
@@ -78,7 +78,6 @@ goLeft vty maze (y,x) = do
 
 goRight :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
 goRight vty maze (y,x) = do
-  putChar ' '
   let ((_,_),(_,xmax)) = bounds maze
       x' = if x < xmax then x+1 else x
       c = maze ! (y,x')
@@ -86,7 +85,6 @@ goRight vty maze (y,x) = do
 
 goUp :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
 goUp vty maze (y,x) = do
-  putChar ' '
   let ((ymin,_),(_,_)) = bounds maze
       y' = if y > ymin then y-1 else y
       c = maze ! (y',x)
@@ -94,7 +92,6 @@ goUp vty maze (y,x) = do
 
 goDown :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
 goDown vty maze (y,x) = do
-  putChar ' '
   let ((_,_),(ymax,_)) = bounds maze
       y' = if y < ymax then y+1 else y
       c = maze ! (y',x)
