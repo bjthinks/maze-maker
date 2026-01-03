@@ -5,7 +5,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.Array
 import Graphics.Vty
 import Graphics.Vty.CrossPlatform
