@@ -85,12 +85,13 @@ printMazeChar maze (x,y) = do
 prettyPrintRow :: Int -> Array (Int,Int) Bool -> String
 prettyPrintRow y maze = do
   let ((xmin,_),(xmax,_)) = bounds maze
-  map (\x -> printMazeChar maze (x,y)) [xmin..xmax] ++ "\n"
+  map (\x -> printMazeChar maze (x,y)) [xmin..xmax]
 
-prettyPrint :: Array (Int,Int) Bool -> String
-prettyPrint maze = do
-  let ((_,ymin),(_,ymax)) = bounds maze
-  concat $ map (flip prettyPrintRow maze) [ymin..ymax]
+prettyPrint :: Array (Int,Int) Bool -> Array (Int,Int) Char
+prettyPrint maze =
+  let ((xmin,ymin),(xmax,ymax)) = bounds maze
+      chars = concat $ map (flip prettyPrintRow maze) [ymin..ymax]
+  in listArray ((xmin,ymin),(xmax,ymax)) chars
 
 clearSpace :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
 clearSpace maze (x,y) = writeSTArray maze (x,y) True
@@ -136,6 +137,12 @@ makeMaze (width,height) = do
   removeWalls maze walls places $ (width `div` 2) * (height `div` 2) - 1
   unsafeFreezeSTArray maze
 
+addNewlines :: Int -> String -> String
+addNewlines stride str =
+  if length str <= stride
+  then str ++ "\n"
+  else take stride str ++ "\n" ++ addNewlines stride (drop stride str)
+
 getNanosSinceEpoch :: IO Integer
 getNanosSinceEpoch = do
     (MkSystemTime s ns) <- getSystemTime
@@ -173,7 +180,8 @@ main = do
       result = UF.run $
         runRandT (runSTT (makeMaze (width*2+1,height*2+1))) myGen
       maze = fst result
+      mazeChars = prettyPrint maze
   case interactive of
-    False -> putStr $ prettyPrint maze
-    True -> playMaze maze
+    False -> putStr $ addNewlines (width*2+1) $ elems mazeChars
+    True -> playMaze mazeChars
   putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
