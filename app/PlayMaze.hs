@@ -27,19 +27,17 @@ playMaze :: Array (Int,Int) Char -> IO String
 playMaze maze = bracket setup cleanup $ playMaze' maze
 
 playMaze' :: Array (Int,Int) Char -> (Vty,BufferMode) -> IO String
-playMaze' maze (vty,_) = do
-  printMaze vty maze
-  eventLoop vty maze (1,0)
+playMaze' maze (vty,_) = eventLoop vty maze (1,0)
 
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
 
-printMaze :: Vty -> Array (Int,Int) Char -> IO ()
-printMaze vty maze =
+basePicture :: Array (Int,Int) Char -> Picture
+basePicture maze =
   let ((ymin,xmin),(ymax,xmax)) = bounds maze
       mazeRows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]]
-      mazeLines = map (string style) mazeRows
-  in update vty $ picForImage $ foldr1 (<->) mazeLines
+      infoRow = "wasd or hjkl to move, q or ESC to quit"
+  in picForImage $ foldr1 (<->) $ map (string style) (mazeRows ++ [infoRow])
 
 eventLoop :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
 eventLoop vty maze (y,x) = do
@@ -47,11 +45,10 @@ eventLoop vty maze (y,x) = do
   if y == ymax-1 && x == xmax
     then return "Congratulations! You won!\n"
     else do
-    setCursorPosition y x
-    putChar '@'
-    cursorBackward 1
+    let playerImage = translate x y (char style '@')
+        composition = addToTop (basePicture maze) playerImage
+    update vty composition
     e <- nextEvent vty
-    putChar ' '
     case e of
       EvKey (KChar 'q') [] -> return ""
       EvKey KEsc [] -> return ""
