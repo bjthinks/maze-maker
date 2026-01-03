@@ -5,23 +5,25 @@ import Data.Array
 import Graphics.Vty
 import Graphics.Vty.CrossPlatform
 
-playMaze :: Array (Int,Int) Char -> IO String
+type Maze = Array (Int,Int) Char
+
+playMaze :: Maze -> IO String
 playMaze maze = bracket (mkVty defaultConfig) shutdown $ playMaze' maze
 
-playMaze' :: Array (Int,Int) Char -> Vty -> IO String
+playMaze' :: Maze -> Vty -> IO String
 playMaze' maze vty = eventLoop vty maze (1,0)
 
 style :: Attr
 style = defAttr `withForeColor` white `withBackColor` black
 
-basePicture :: Array (Int,Int) Char -> Picture
+basePicture :: Maze -> Picture
 basePicture maze =
   let ((ymin,xmin),(ymax,xmax)) = bounds maze
       mazeRows = [[maze ! (y,x) | x <- [xmin..xmax]] | y <- [ymin..ymax]]
       infoRow = "wasd or hjkl to move, q or ESC to quit"
   in picForImage $ foldr1 (<->) $ map (string style) (mazeRows ++ [infoRow])
 
-eventLoop :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
+eventLoop :: Vty -> Maze -> (Int,Int) -> IO String
 eventLoop vty maze (y,x) = do
   let ((_,_),(ymax,xmax)) = bounds maze
   if y == ymax-1 && x == xmax
@@ -48,28 +50,28 @@ eventLoop vty maze (y,x) = do
       EvKey KRight [] -> goRight vty maze (y,x)
       _ -> eventLoop vty maze (y,x)
 
-goLeft :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
+goLeft :: Vty -> Maze -> (Int,Int) -> IO String
 goLeft vty maze (y,x) = do
   let ((_,xmin),(_,_)) = bounds maze
       x' = if x > xmin then x-1 else x
       c = maze ! (y,x')
   eventLoop vty maze $ if c == ' ' then (y,x') else (y,x)
 
-goRight :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
+goRight :: Vty -> Maze -> (Int,Int) -> IO String
 goRight vty maze (y,x) = do
   let ((_,_),(_,xmax)) = bounds maze
       x' = if x < xmax then x+1 else x
       c = maze ! (y,x')
   eventLoop vty maze $ if c == ' ' then (y,x') else (y,x)
 
-goUp :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
+goUp :: Vty -> Maze -> (Int,Int) -> IO String
 goUp vty maze (y,x) = do
   let ((ymin,_),(_,_)) = bounds maze
       y' = if y > ymin then y-1 else y
       c = maze ! (y',x)
   eventLoop vty maze $ if c == ' ' then (y',x) else (y,x)
 
-goDown :: Vty -> Array (Int,Int) Char -> (Int,Int) -> IO String
+goDown :: Vty -> Maze -> (Int,Int) -> IO String
 goDown vty maze (y,x) = do
   let ((_,_),(ymax,_)) = bounds maze
       y' = if y < ymax then y+1 else y
