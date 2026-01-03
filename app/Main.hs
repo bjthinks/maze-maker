@@ -152,20 +152,24 @@ getNanosSinceEpoch = do
 main :: IO ()
 main = do
   args <- getArgs
-  (width,height) <- case args of
+  (width,height,interactive) <- case args of
     [] -> do
       putStrLn "You may specify the size of the maze using command line arguments."
       putStrLn "For example: cabal run maze-maker -- 10 5"
+      putStrLn "You can play through the maze on your computer with:"
+      putStrLn "  cabal run maze-maker -- 20 20 play"
       putStrLn "The recommended font is \"Square\" by Wouter van Oortmerssen."
       putStr "Download it here: "
       hyperlink "https://strlen.com/square/" "https://strlen.com/square/"
       putStrLn "."
-      return (5,5)
-    [x,y] -> return (read x,read y)
+      return (5,5,False)
+    [x,y] -> return (read x,read y,False)
+    [x,y,"play"] -> return (read x,read y,True)
     _ -> hPutStrLn stderr "Please specify a width and a height." >> exitFailure
   if width <= 1 || height <= 1
     then hPutStrLn stderr "Width and height must be at least 2." >> exitFailure
     else return ()
+  putStrLn $ "Interactive is " ++ show interactive
   putStr $ setSGRCode [SetColor Foreground Vivid White,
                        SetColor Background Dull Black] ++
            clearFromCursorToScreenEndCode
