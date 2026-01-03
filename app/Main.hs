@@ -5,7 +5,6 @@ import qualified Data.Set as S
 import Control.Monad.Random
 import Control.Monad.ST.Trans
 import qualified Control.Monad.Union as UF
-import Control.Monad.Writer
 
 import Data.Time.Clock.System (getSystemTime, SystemTime(..))
 import System.Console.ANSI
@@ -13,13 +12,7 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 
-type Maze s = STT s (RandT StdGen (WriterT String (UF.UnionM (Int,Int))))
-
-nl :: Maze s ()
-nl = tell "\n"
-
-line :: String -> Maze s ()
-line s = tell s >> nl
+type Maze s = STT s (RandT StdGen (UF.UnionM (Int,Int)))
 
 getMaze :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s Bool
 getMaze maze (x,y) = do
@@ -28,76 +21,76 @@ getMaze maze (x,y) = do
     then return True -- out of bounds is an empty space to aid printing
     else readSTArray maze (x,y)
 
-printMazeChar :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
+printMazeChar :: Array (Int,Int) Bool -> (Int,Int) -> Char
 printMazeChar maze (x,y) = do
-  b <- getMaze maze (x,y)
+  let b = maze ! (x,y)
   case b of
-    True -> tell " "
-    False -> do
-      above <- getMaze maze (x,y-1)
-      below <- getMaze maze (x,y+1)
-      left  <- getMaze maze (x-1,y)
-      right <- getMaze maze (x+1,y)
-      case (above,below,left,right) of
+    True -> ' '
+    False -> let
+      ((xmin,ymin),(xmax,ymax)) = bounds maze
+      above = if y == ymin then True else maze ! (x,y-1)
+      below = if y == ymax then True else maze ! (x,y+1)
+      left  = if x == xmin then True else maze ! (x-1,y)
+      right = if x == xmax then True else maze ! (x+1,y)
+      in case (above,below,left,right) of
 {-
-        -- light weight lines
-        -- pillar
-        (True,True,True,True) -> tell "\x2022" -- bullet
-        -- end of wall
-        (True,True,True,False) -> tell "\x2576"
-        (True,True,False,True) -> tell "\x2574"
-        (True,False,True,True) -> tell "\x2577"
-        (False,True,True,True) -> tell "\x2575"
-        -- middle of wall
-        (False,False,True,True) -> tell "\x2502"
-        (True,True,False,False) -> tell "\x2500"
-        -- corners
-        (True,False,True,False) -> tell "\x250c"
-        (True,False,False,True) -> tell "\x2510"
-        (False,True,True,False) -> tell "\x2514"
-        (False,True,False,True) -> tell "\x2518"
-        -- T intersections
-        (False,False,False,True) -> tell "\x2524"
-        (False,False,True,False) -> tell "\x251c"
-        (False,True,False,False) -> tell "\x2534"
-        (True,False,False,False) -> tell "\x252c"
-        -- + intersction
-        (False,False,False,False) -> tell "\x253c"
+           -- light weight lines
+           -- pillar
+           (True,True,True,True) -> '\x2022' -- bullet
+           -- end of wall
+           (True,True,True,False) -> '\x2576'
+           (True,True,False,True) -> '\x2574'
+           (True,False,True,True) -> '\x2577'
+           (False,True,True,True) -> '\x2575'
+           -- middle of wall
+           (False,False,True,True) -> '\x2502'
+           (True,True,False,False) -> '\x2500'
+           -- corners
+           (True,False,True,False) -> '\x250c'
+           (True,False,False,True) -> '\x2510'
+           (False,True,True,False) -> '\x2514'
+           (False,True,False,True) -> '\x2518'
+           -- T intersections
+           (False,False,False,True) -> '\x2524'
+           (False,False,True,False) -> '\x251c'
+           (False,True,False,False) -> '\x2534'
+           (True,False,False,False) -> '\x252c'
+           -- + intersction
+           (False,False,False,False) -> '\x253c'
 -}
-        -- heavy weight lines
-        -- pillar
-        (True,True,True,True) -> tell "\x25cf"
-        -- end of wall
-        (True,True,True,False) -> tell "\x257a"
-        (True,True,False,True) -> tell "\x2578"
-        (True,False,True,True) -> tell "\x257b"
-        (False,True,True,True) -> tell "\x2579"
-        -- middle of wall
-        (False,False,True,True) -> tell "\x2503"
-        (True,True,False,False) -> tell "\x2501"
-        -- corners
-        (True,False,True,False) -> tell "\x250f"
-        (True,False,False,True) -> tell "\x2513"
-        (False,True,True,False) -> tell "\x2517"
-        (False,True,False,True) -> tell "\x251b"
-        -- T intersections
-        (False,False,False,True) -> tell "\x252b"
-        (False,False,True,False) -> tell "\x2523"
-        (False,True,False,False) -> tell "\x253b"
-        (True,False,False,False) -> tell "\x2533"
-        -- + intersction
-        (False,False,False,False) -> tell "\x254b"
+           -- heavy weight lines
+           -- pillar
+           (True,True,True,True) -> '\x25cf'
+           -- end of wall
+           (True,True,True,False) -> '\x257a'
+           (True,True,False,True) -> '\x2578'
+           (True,False,True,True) -> '\x257b'
+           (False,True,True,True) -> '\x2579'
+           -- middle of wall
+           (False,False,True,True) -> '\x2503'
+           (True,True,False,False) -> '\x2501'
+           -- corners
+           (True,False,True,False) -> '\x250f'
+           (True,False,False,True) -> '\x2513'
+           (False,True,True,False) -> '\x2517'
+           (False,True,False,True) -> '\x251b'
+           -- T intersections
+           (False,False,False,True) -> '\x252b'
+           (False,False,True,False) -> '\x2523'
+           (False,True,False,False) -> '\x253b'
+           (True,False,False,False) -> '\x2533'
+           -- + intersction
+           (False,False,False,False) -> '\x254b'
 
-prettyPrintRow :: Int -> STArray s (Int,Int) Bool -> Maze s ()
+prettyPrintRow :: Int -> Array (Int,Int) Bool -> String
 prettyPrintRow y maze = do
-  let ((xmin,_),(xmax,_)) = boundsSTArray maze
-  sequence_ $ map (\x -> printMazeChar maze (x,y)) [xmin..xmax]
-  nl
+  let ((xmin,_),(xmax,_)) = bounds maze
+  map (\x -> printMazeChar maze (x,y)) [xmin..xmax] ++ "\n"
 
-prettyPrint :: STArray s (Int,Int) Bool -> Maze s ()
+prettyPrint :: Array (Int,Int) Bool -> String
 prettyPrint maze = do
-  let ((_,ymin),(_,ymax)) = boundsSTArray maze
-  sequence_ $ map (flip prettyPrintRow maze) [ymin..ymax]
+  let ((_,ymin),(_,ymax)) = bounds maze
+  concat $ map (flip prettyPrintRow maze) [ymin..ymax]
 
 clearSpace :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
 clearSpace maze (x,y) = writeSTArray maze (x,y) True
@@ -128,7 +121,7 @@ removeWalls maze walls places numToRemove = do
     else return numToRemove
   removeWalls maze newWalls places newNumToRemove
 
-makeMaze :: (Int,Int) -> Maze s ()
+makeMaze :: (Int,Int) -> Maze s (Array (Int,Int) Bool)
 makeMaze (width,height) = do
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
@@ -141,13 +134,16 @@ makeMaze (width,height) = do
   nodes <- sequence $ map UF.new startingSpaces
   let places = array ((0,0),(width-1,height-1)) $ zip startingSpaces nodes
   removeWalls maze walls places $ (width `div` 2) * (height `div` 2) - 1
-  prettyPrint maze
+  unsafeFreezeSTArray maze
 
 getNanosSinceEpoch :: IO Integer
 getNanosSinceEpoch = do
     (MkSystemTime s ns) <- getSystemTime
     -- Convert seconds to nanoseconds and add the current nanosecond fraction
     return $ toInteger s * 10^(9 :: Int) + toInteger ns
+
+playMaze :: a -> IO ()
+playMaze _ = return ()
 
 main :: IO ()
 main = do
@@ -169,13 +165,15 @@ main = do
   if width <= 1 || height <= 1
     then hPutStrLn stderr "Width and height must be at least 2." >> exitFailure
     else return ()
-  putStrLn $ "Interactive is " ++ show interactive
   putStr $ setSGRCode [SetColor Foreground Vivid White,
                        SetColor Background Dull Black] ++
            clearFromCursorToScreenEndCode
   t <- getNanosSinceEpoch
   let myGen = mkStdGen $ fromInteger t
-      result = UF.run $ runWriterT $
+      result = UF.run $
         runRandT (runSTT (makeMaze (width*2+1,height*2+1))) myGen
-  putStr $ snd result
+      maze = fst result
+  case interactive of
+    False -> putStr $ prettyPrint maze
+    True -> playMaze maze
   putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
