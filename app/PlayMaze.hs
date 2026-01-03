@@ -5,23 +5,26 @@ import Data.Array
 import System.IO
 import Control.Concurrent (threadDelay)
 
-setup :: IO (BufferMode,Bool)
+setup :: IO (BufferMode,Bool,BufferMode)
 setup = do
-  oldBuffering <- hGetBuffering stdin
+  oldInputBuffering <- hGetBuffering stdin
   oldEcho <- hGetEcho stdin
+  oldOutputBuffering <- hGetBuffering stdout
   hSetBuffering stdin NoBuffering
   hSetEcho stdin False
-  return (oldBuffering,oldEcho)
+  hSetBuffering stdout NoBuffering
+  return (oldInputBuffering,oldEcho,oldOutputBuffering)
 
-cleanup :: (BufferMode,Bool) -> IO ()
-cleanup (oldBuffering,oldEcho) = do
-  hSetBuffering stdin oldBuffering
+cleanup :: (BufferMode,Bool,BufferMode) -> IO ()
+cleanup (oldInputBuffering,oldEcho,oldOutputBuffering) = do
+  hSetBuffering stdin oldInputBuffering
   hSetEcho stdin oldEcho
+  hSetBuffering stdout oldOutputBuffering
 
 playMaze :: Array (Int,Int) Char -> IO ()
 playMaze maze = bracket setup cleanup $ const $ playMaze' maze
 
 playMaze' :: Array (Int,Int) Char -> IO ()
 playMaze' _ = do
-  putStrLn "Delaying for 3 seconds"
+  putStr "Delaying for 3 seconds"
   threadDelay 3000000
