@@ -1,11 +1,10 @@
 module Main where
 
-import Data.Array
-import qualified Data.Set as S
 import Control.Monad.Random
 import Control.Monad.ST.Trans
 import qualified Control.Monad.Union as UF
-
+import Data.Array
+import qualified Data.Set as S
 import Data.Time.Clock.System (getSystemTime, SystemTime(..))
 import System.Console.ANSI
 import System.Environment (getArgs)
@@ -14,16 +13,18 @@ import System.IO (hPutStrLn, stderr)
 
 import PlayMaze
 
-type Maze s = STT s (RandT StdGen (UF.UnionM (Int,Int)))
+type MazeM s = STT s (RandT StdGen (UF.UnionM (Int,Int)))
+type MutableMaze s = STArray s (Int,Int) Bool
+type PreMaze = Array (Int,Int) Bool
 
-getMaze :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s Bool
+getMaze :: MutableMaze s -> (Int,Int) -> MazeM s Bool
 getMaze maze (x,y) = do
   let ((xmin,ymin),(xmax,ymax)) = boundsSTArray maze
   if x < xmin || x > xmax || y < ymin || y > ymax
     then return True -- out of bounds is an empty space to aid printing
     else readSTArray maze (x,y)
 
-printMazeChar :: Array (Int,Int) Bool -> (Int,Int) -> Char
+printMazeChar :: PreMaze -> (Int,Int) -> Char
 printMazeChar maze (x,y) = do
   let b = maze ! (x,y)
   case b of
@@ -84,25 +85,25 @@ printMazeChar maze (x,y) = do
            -- + intersction
            (False,False,False,False) -> '\x254b'
 
-prettyPrintRow :: Int -> Array (Int,Int) Bool -> String
+prettyPrintRow :: Int -> PreMaze -> String
 prettyPrintRow y maze = do
   let ((xmin,_),(xmax,_)) = bounds maze
   map (\x -> printMazeChar maze (x,y)) [xmin..xmax]
 
-prettyPrint :: Array (Int,Int) Bool -> Array (Int,Int) Char
+prettyPrint :: PreMaze -> Maze
 prettyPrint maze =
   let ((xmin,ymin),(xmax,ymax)) = bounds maze
       chars = concat $ map (flip prettyPrintRow maze) [ymin..ymax]
   in listArray ((ymin,xmin),(ymax,xmax)) chars
 
-clearSpace :: STArray s (Int,Int) Bool -> (Int,Int) -> Maze s ()
+clearSpace :: MutableMaze s -> (Int,Int) -> MazeM s ()
 clearSpace maze (x,y) = writeSTArray maze (x,y) True
 
 m :: l -> l -> (l,())
 m x _ = (x,())
 
-removeWalls :: STArray s (Int,Int) Bool -> S.Set (Int,Int) ->
-               Array (Int,Int) UF.Node -> Int -> Maze s ()
+removeWalls :: MutableMaze s -> S.Set (Int,Int) ->
+               Array (Int,Int) UF.Node -> Int -> MazeM s ()
 removeWalls _ _ _ 0 = return ()
 removeWalls maze walls places numToRemove = do
   let numWalls = S.size walls
@@ -124,7 +125,7 @@ removeWalls maze walls places numToRemove = do
     else return numToRemove
   removeWalls maze newWalls places newNumToRemove
 
-makeMaze :: (Int,Int) -> Maze s (Array (Int,Int) Bool)
+makeMaze :: (Int,Int) -> MazeM s PreMaze
 makeMaze (width,height) = do
   maze <- newSTArray ((0,0),(width-1,height-1)) False
   let startingSpaces = [(x,y) | x <- [1,3..width-2], y <- [1,3..height-2]]
@@ -151,20 +152,22 @@ getNanosSinceEpoch = do
     -- Convert seconds to nanoseconds and add the current nanosecond fraction
     return $ toInteger s * 10^(9 :: Int) + toInteger ns
 
+helpText :: IO ()
+helpText = do
+  putStrLn "You may specify the size of the maze using command line arguments."
+  putStrLn "For example: cabal run maze-maker -- 10 5"
+  putStrLn "You can play through the maze on your computer with:"
+  putStrLn "  cabal run maze-maker -- 20 20 play"
+  putStrLn "The recommended font is \"Square\" by Wouter van Oortmerssen."
+  putStr "Download it here: "
+  hyperlink "https://strlen.com/square/" "https://strlen.com/square/"
+  putStrLn "."
+
 main :: IO ()
 main = do
   args <- getArgs
   (width,height,interactive) <- case args of
-    [] -> do
-      putStrLn "You may specify the size of the maze using command line arguments."
-      putStrLn "For example: cabal run maze-maker -- 10 5"
-      putStrLn "You can play through the maze on your computer with:"
-      putStrLn "  cabal run maze-maker -- 20 20 play"
-      putStrLn "The recommended font is \"Square\" by Wouter van Oortmerssen."
-      putStr "Download it here: "
-      hyperlink "https://strlen.com/square/" "https://strlen.com/square/"
-      putStrLn "."
-      return (5,5,False)
+    [] -> helpText >> return (5,5,False)
     [x,y] -> return (read x,read y,False)
     [x,y,"play"] -> return (read x,read y,True)
     _ -> hPutStrLn stderr "Please specify a width and a height." >> exitFailure

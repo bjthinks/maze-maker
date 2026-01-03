@@ -1,4 +1,4 @@
-module PlayMaze (playMaze) where
+module PlayMaze (playMaze, Maze) where
 
 import Control.Exception (bracket)
 import Control.Monad
