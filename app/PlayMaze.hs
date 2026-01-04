@@ -7,6 +7,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Control.Monad.State.Strict
 import Data.Array
+import Data.Maybe
 import Graphics.Vty
 import Graphics.Vty.CrossPlatform
 
@@ -116,9 +117,8 @@ goLeft = do
   x <- use (playerLoc . locX)
   y <- use (playerLoc . locY)
   xmin <- view (maze . xMin)
-  cs <- view (maze . chars)
   let x' = if x > xmin then x-1 else x
-      c = cs ! (y,x')
+  c <- fromJust <$> preview (maze . chars . ix (y,x'))
   playerLoc . locX .= if c == ' ' then x' else x
 
 goRight :: Op ()
@@ -126,9 +126,8 @@ goRight = do
   x <- use (playerLoc . locX)
   y <- use (playerLoc . locY)
   xmax <- view (maze . xMax)
-  cs <- view (maze . chars)
   let x' = if x < xmax then x+1 else x
-      c = cs ! (y,x')
+  c <- fromJust <$> preview (maze . chars . ix (y,x'))
   playerLoc . locX .= if c == ' ' then x' else x
 
 goUp :: Op ()
@@ -136,9 +135,8 @@ goUp = do
   x <- use (playerLoc . locX)
   y <- use (playerLoc . locY)
   ymin <- view (maze . yMin)
-  cs <- view (maze . chars)
   let y' = if y > ymin then y-1 else y
-      c = cs ! (y',x)
+  c <- fromJust <$> preview (maze . chars . ix (y',x))
   playerLoc . locY .= if c == ' ' then y' else y
 
 goDown :: Op ()
@@ -146,9 +144,8 @@ goDown = do
   x <- use (playerLoc . locX)
   y <- use (playerLoc . locY)
   ymax <- view (maze . yMax)
-  cs <- view (maze . chars)
   let y' = if y < ymax then y+1 else y
-      c = cs ! (y',x)
+  c <- fromJust <$> preview (maze . chars . ix (y',x))
   playerLoc . locY .= if c == ' ' then y' else y
 
 eventLoop :: Op String
