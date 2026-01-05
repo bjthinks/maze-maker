@@ -189,6 +189,7 @@ main = do
       putStr $ setSGRCode [] ++ clearFromCursorToScreenEndCode
     True -> do
       maybeMsg <- playMaze mazeChars
-      case maybeMsg of
-        Just msg -> putStrLn msg
-        Nothing -> return ()
+      mapM_ putStrLn msg
+      --case maybeMsg of
+      --  Just msg -> putStrLn msg
+      --  Nothing -> return ()
