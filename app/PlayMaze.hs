@@ -1,7 +1,6 @@
 module PlayMaze (playMaze, MazeArray) where
 
 import Control.Exception (bracket)
-import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
@@ -10,6 +9,7 @@ import Data.Array
 import Data.Maybe
 import Graphics.Vty
 import Graphics.Vty.CrossPlatform
+import Lens.Micro.Platform hiding (chars)
 
 type MazeArray = Array (Int,Int) Char
 
